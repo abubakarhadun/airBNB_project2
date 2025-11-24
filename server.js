@@ -9,14 +9,14 @@ app.use(express.json());
 app.use(express.static('./public'));
 
 //koneksi ke Postgresql
-const pool = require('./db/postgres.js')
+const pool = require('./db/postgres.js');
 
 
 const userRouter = require('./routes/users.js')(pool);
 
 
 //Routing
-app.use('/users', userRouter).
+app.use('/users', userRouter);
 
 //node URL dan port server.js
 app.listen(port, () => {

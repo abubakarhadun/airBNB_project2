@@ -5,34 +5,38 @@ const HalamanAwalLogin = document.getElementById('HalamanAwalLogin');
 
 
 
-
 HalamanAwalLogin.addEventListener('submit', function(e){
     e.preventDefault();
+
     const username = document.getElementById('UsernameLogin').value;
     const password = document.getElementById('PasswordLogin').value;
-    const email = document.getElementById('EmailLogin').value;
+    const email    = document.getElementById('EmailLogin').value;
+
     if(password && username && email){
         fetch('/users/login', {
             method: 'POST',
-            headers: {'Content Type' : 'application/json'},
-            body:JSON.stringify({username, password, email})
-        }).then(res => res.json())
+            headers: {
+                'Content-Type': 'application/json'    // FIXED
+            },
+            body: JSON.stringify({username, password, email})
+        })
+        .then(res => res.json())
         .then(data =>{
             if(data.user){
                 console.log('Anda Berhasil Login');
-                alert(`Anda Berhasil Login ${data.user.username}`);    
+                alert(`Anda Berhasil Login ${data.user.username}`);
                 HalamanUsersAwal(data.user.username, data.user.email);
             }else{
                 alert('Username Dan Password Salah');
             }
-        }).catch(err => {
-            console.log(err.massage);
-            alert('Terjadi malasah Saat Login');
+        })
+        .catch(err => {
+            console.log(err.message); // FIX TYPO massage -> message
+            alert('Terjadi masalah Saat Login');
         });
     }else{
         console.log('Isi Semua Data !!!');
-        alert('Isi Semua Data !!!'); 
-        return;
+        alert('Isi Semua Data !!!');
     }
 });
 
