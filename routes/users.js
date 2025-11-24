@@ -1,73 +1,81 @@
 const express = require('express');
-const req = require('express/lib/request');
-const res = require('express/lib/response');
+const crypto = require('crypto');
 
-
-module.exports = function(db){
+module.exports = function (db) {
     const router = express.Router();
-    const crypto = require('crypto');
 
-    router.post('/daftar', async (req, res) =>{
-        const {usernameDaftar, passwordDaftar, emailDaftar} = req.body;
-        const salt = crypto.randomBytes(16).toString('hex');
-        const passDgnSalt = (passwordDaftar + salt).crypto.createHash('sha256').digest('hex');
+    // REGISTER
+    router.post('/daftar', async (req, res) => {
+        const { usernameDaftar, passwordDaftar, emailDaftar } = req.body;
 
-        if(!usernameDaftar || !passwordDaftar || !emailDaftar){
-            return res.status(400).json({ err : 'userame, Password And Email are required' });
+        if (!usernameDaftar || !passwordDaftar || !emailDaftar) {
+            return res.status(400).json({ error: 'Data tidak lengkap' });
         }
 
-        try{
-            const query = (`INSERT INTO booking_app.users (name, email, password, salt) VALUES ($1, $2, $3, $4) RETURNING id`);
-            const result = await db.query(query, [usernameDaftar, emailDaftar, passDgnSalt, salt]);
+        try {
+            const salt = crypto.randomBytes(16).toString('hex');
+            const hashedPass = crypto.createHash('sha256').update(passwordDaftar + salt).digest('hex');
 
-            res.status(201).json({
-                message: console.log(`Berhasil Mendaftar dengan name:  ${usernameDaftar} dan Password: ${passDgnSalt}, Menggunakan Email: ${emailDaftar}`),
-                terdaftar: {
-                    id: result.rows[0].id,
-                    username: usernameDaftar,
-                    password: passDgnSalt,
-                    email: emailDaftar
+            const query = `
+                INSERT INTO booking_app.users (name, email, password, salt)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id, name, email
+            `;
+
+            const result = await db.query(query, [
+                usernameDaftar,
+                emailDaftar,
+                hashedPass,
+                salt
+            ]);
+
+            console.log(`Berhasil Mendaftar: ${usernameDaftar} (${emailDaftar})`);
+
+            return res.status(201).json({
+                terdaftar: result.rows[0]
+            });
+        } catch (err) {
+            console.error('Gagal Mendaftar:', err);
+            return res.status(500).json({ error: err.message });
+        }
+    });
+
+    // LOGIN
+    router.post('/login', async (req, res) => {
+        const { username, password, email } = req.body;
+
+        if (!username || !password || !email) {
+            return res.status(400).json({ error: 'Data tidak lengkap.' });
+        }
+
+        try {
+            // Fix query yang sebelumnya rusak total
+            const query = `SELECT * FROM booking_app.users WHERE name = $1`;
+            const result = await db.query(query, [username]);
+
+            if (result.rows.length === 0) {
+                return res.status(400).json({ error: 'User tidak ditemukan' });
+            }
+
+            const user = result.rows[0];
+            const hashed = crypto.createHash('sha256').update(password + user.salt).digest('hex');
+
+            if (hashed !== user.password || email !== user.email) {
+                return res.status(401).json({ error: 'Password atau email salah' });
+            }
+
+            return res.status(200).json({
+                user: {
+                    id: user.id,
+                    username: user.name,
+                    email: user.email
                 }
             });
-        }catch(err){
-            console.error('Gagal Mendaftar', err);
-            return res.status(500).json({error: err.message});
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ error: err.message });
         }
     });
 
-    router.post('/login', async (req,res) =>{
-        const {username, password, email} = req.body;
-        if(!username)return res.status(400).json({err: 'Gagal Mengambil Data dari Frontend'});
-
-        try{
-            const query = `SELECT * FROM booking_app.users WHERE name VALUES $1`;
-            const result = await db.query(query[username]);
-
-            if(!result.rows[0]){
-                return res.status(400).json({err: err.message});
-            }else{
-                const passwordDb = password;
-                const saltnya = result.rows[0].salt;
-                passSalted = crypto.createHash('sha256').update(passwordDb + saltnya).digest('hex');
-
-                if(result.rows[0].password === passSalted && result.rows[0].email === email){
-                    res.status(200).json({
-                        user: {
-                            id: result.rows[0].id,
-                            username,
-                            email
-                        }
-                    });
-                }
-            }
-        }catch(err){
-            return res.status(500).json({error: err.message});
-        }
-    });
-
-
-
-
-
-    return router
-}
+    return router;
+};

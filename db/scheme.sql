@@ -1,54 +1,58 @@
-
+-- 1. Create user safely
+-- 1. Create user
 CREATE USER abubakar WITH PASSWORD '122005';
-
+ -- 2. Create database owned by that user
 CREATE DATABASE airbnb OWNER abubakar;
+-- 3. Connect to DB
+\c airbnb
 
-GRANT ALL PRIVILEGES ON DATABASE airbnb TO abubakar;
+-- 4. Create schema
+CREATE SCHEMA IF NOT EXISTS booking_app AUTHORIZATION abubakar;
 
-GRANT CREATE ON DATABASE airbnb TO abubakar;
-
-CREATE SCHEMA booking_app;
-
-ALTER SCHEMA booking_app OWNER TO abubakar;
-
-CREATE TYPE booking_app.Role AS ENUM (
+-- 5. Enum
+CREATE TYPE booking_app.role AS ENUM (
   'owner',
   'visitor'
 );
 
-CREATE TABLE booking_app.users (
-  "id" int PRIMARY KEY,
-  "name" text,
-  "email" text,
-  "created_at" timestamp,
-  "updated_at" timestamp
+-- 6. Tables
+CREATE TABLE IF NOT EXISTS booking_app.users (
+  id SERIAL PRIMARY KEY,
+  name TEXT,
+  email TEXT UNIQUE,
+  password TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
 );
 
-CREATE TABLE booking_app.homes (
-  "id" int PRIMARY KEY,
-  "address" text,
-  "price_per_night" int,
-  "created_at" timestamp,
-  "updated_at" timestamp
+CREATE TABLE IF NOT EXISTS booking_app.homes (
+  id SERIAL PRIMARY KEY,
+  address TEXT,
+  price_per_night INT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
 );
 
-CREATE TABLE booking_app.users_homes (
-  "id" int PRIMARY KEY,
-  "home_id" int REFERENCES booking_app.homes("id"),
-  "user_id" int REFERENCES booking_app.users("id"),
-  "role" booking_app.Role,
-  "start" timestamp,
-  "end" timestamp,
-  "created_at" timestamp,
-  "updated_at" timestamp
+CREATE TABLE IF NOT EXISTS booking_app.users_homes (
+  id SERIAL PRIMARY KEY,
+  home_id INT REFERENCES booking_app.homes(id),
+  user_id INT REFERENCES booking_app.users(id),
+  role booking_app.role,
+  start TIMESTAMP,
+  "end" TIMESTAMP,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  UNIQUE (user_id, home_id)
 );
 
 
-CREATE UNIQUE INDEX idx_users_homes_unique ON booking_app.users_homes(user_id, home_id);
 
-ALTER TABLE booking_app.users ADD CONSTRAINT email_unique UNIQUE(email);
+ALTER SCHEMA booking_app OWNER TO abubakar;
 
+ALTER TABLE booking_app.users OWNER TO abubakar;
+ALTER TABLE booking_app.homes OWNER TO abubakar;
+ALTER TABLE booking_app.users_homes OWNER TO abubakar;
 
-ALTER TABLE booking_app.users
-  ADD COLUMN password TEXT NOT NULL,
-  ADD COLUMN salt TEXT NOT NULL;
+ALTER TYPE booking_app.role OWNER TO abubakar;
+
